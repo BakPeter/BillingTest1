@@ -1,46 +1,138 @@
 package com.bpapps.billingtest1
 
+import android.annotation.SuppressLint
 import android.os.Bundle
-import androidx.fragment.app.Fragment
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.Fragment
+import com.android.billingclient.api.*
+import kotlinx.android.synthetic.main.fragment_purchase.*
 
-class Purment : Fragment() {
+private const val TAG = "TAG.PurchaseFragment"
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
-        }
+class PurchaseFragment : Fragment(), BillingClientStateListener, View.OnClickListener {
+
+    private val purchaseUpdateListener = PurchasesUpdatedListener { billingResult, mutableList ->
     }
+
+    private lateinit var billingClient: BillingClient
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_parchuse, container, false)
+        return inflater.inflate(R.layout.fragment_purchase, container, false)
     }
 
-    companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment ParchuseFragment.
-         */
-        // TODO: Rename and change types and number of parameters
-        @JvmStatic
-        fun newInstance(param1: String, param2: String) =
-            Purment().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        billingClient = BillingClient.newBuilder(requireContext())
+            .setListener(purchaseUpdateListener)
+            .enablePendingPurchases()
+            .build()
+
+        btnLoadProducts.setOnClickListener {
+            Log.d(TAG, "btn on click")
+            getProducts()
+        }
+
+        tvProduct1.setOnClickListener(this)
+        tvProduct2.setOnClickListener(this)
+        tvProduct3.setOnClickListener(this)
+        tvSubscription1.setOnClickListener(this)
+        tvSubscription2.setOnClickListener(this)
+    }
+
+    private fun getProducts() {
+        Log.d(TAG, "getProducts")
+
+        billingClient.startConnection(this)
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //BillingClientStateListener
+    override fun onBillingServiceDisconnected() {
+        Log.d(TAG, "onBillingServiceDisconnected")
+        getProducts()
+    }
+
+    @SuppressLint("SetTextI18n")
+    override fun onBillingSetupFinished(billingResult: BillingResult) {
+        Log.d(TAG, "onBillingSetupFinished")
+        if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+            val skuList1 = arrayListOf(
+                "in_app_product_20",
+                "in_app_product_10",
+                "in_app_product_30"
+            )
+            val params1 = SkuDetailsParams.newBuilder()
+            params1.setSkusList(skuList1).setType(BillingClient.SkuType.INAPP)
+            if (billingClient.isReady) {
+                billingClient.querySkuDetailsAsync(params1.build()) { billingResult, skuDetailList ->
+                    if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                        Log.d(TAG, "Total of ${skuDetailList?.size}")
+
+                        skuDetailList?.let { it ->
+                            it.forEach { skuDetails: SkuDetails ->
+                                Log.d(TAG, "Title=${skuDetails.title}, Price=${skuDetails.price}")
+                            }
+                        }
+
+                        tvProduct1.text =
+                            "${skuDetailList?.get(0)?.title} - ${skuDetailList?.get(0)?.price}"
+                        tvProduct2.text =
+                            "${skuDetailList?.get(1)?.title} - ${skuDetailList?.get(1)?.price}"
+                        tvProduct2.text =
+                            "${skuDetailList?.get(2)?.title} - ${skuDetailList?.get(2)?.price}"
+                    }
                 }
             }
+
+            val skuList2 = arrayListOf(
+                "one_month_subscription",
+                "three_months_subscription"
+            )
+            val params2 = SkuDetailsParams.newBuilder()
+            params2.setSkusList(skuList2).setType(BillingClient.SkuType.SUBS)
+            if (billingClient.isReady) {
+                billingClient.querySkuDetailsAsync(params2.build()) { billingResult, skuDetailList ->
+                    if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                        Log.d(TAG, "Total of ${skuDetailList?.size}")
+
+                        skuDetailList?.let { it ->
+                            it.forEach { skuDetails: SkuDetails ->
+                                Log.d(
+                                    TAG,
+                                    "Title=${skuDetails.title}, Price=${skuDetails.price}"
+                                )
+                            }
+                        }
+
+                        tvSubscription1.text = "${skuDetailList?.get(0)?.title} - ${skuDetailList?.get(0)?.price}"
+                        tvSubscription2.text = "${skuDetailList?.get(1)?.title} - ${skuDetailList?.get(1)?.price}"
+                    }
+                }
+            }
+        }
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    override fun onClick(v: View?) {
+        val msg = when (v?.id) {
+            R.id.tvProduct1 -> "tvProduct1"
+            R.id.tvProduct2 -> "tvProduct2"
+            R.id.tvProduct3 -> "tvProduct3"
+            R.id.tvSubscription1 -> "tvSubscription1"
+            R.id.tvSubscription2 -> "tvSubscription2"
+            else -> "NOUN"
+        }
+
+        Log.d(TAG, msg)
     }
 }
