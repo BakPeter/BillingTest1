@@ -16,8 +16,50 @@ private const val TAG = "TAG.PurchaseFragment"
 
 class PurchaseFragment : Fragment(), BillingClientStateListener, View.OnClickListener {
 
-    private val purchaseUpdateListener = PurchasesUpdatedListener { billingResult, mutableList ->
+    private val purchaseUpdateListener = PurchasesUpdatedListener { billingResult, purchases ->
         Log.d(TAG, "${billingResult.responseCode}")
+
+        if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
+            val dialog: AlertDialog = AlertDialog.Builder(requireContext()).let { builder ->
+                builder.setTitle("Purchased : ")
+                    .setMessage("purchase token : ${purchases[0].purchaseToken}")
+                    .setPositiveButton("OK", object : DialogInterface.OnClickListener {
+                        override fun onClick(dialog: DialogInterface?, which: Int) {
+                            dialog?.dismiss()
+                        }
+                    })
+                    .create()
+            }
+
+            dialog.show()
+
+        } else if (billingResult.responseCode == BillingClient.BillingResponseCode.USER_CANCELED) {
+            val dialog: AlertDialog = AlertDialog.Builder(requireContext()).let { builder ->
+                builder.setTitle("Purchased Cancelled!!! ")
+                    .setMessage("You will NOT get the goods!!!")
+                    .setPositiveButton("OK", object : DialogInterface.OnClickListener {
+                        override fun onClick(dialog: DialogInterface?, which: Int) {
+                            dialog?.dismiss()
+                        }
+                    })
+                    .create()
+            }
+
+            dialog.show()
+        } else {
+            val dialog: AlertDialog = AlertDialog.Builder(requireContext()).let { builder ->
+                builder.setTitle("Purchased Error ")
+                    .setMessage("Other error")
+                    .setPositiveButton("OK", object : DialogInterface.OnClickListener {
+                        override fun onClick(dialog: DialogInterface?, which: Int) {
+                            dialog?.dismiss()
+                        }
+                    })
+                    .create()
+            }
+
+            dialog.show()
+        }
     }
 
     private var products: MutableList<SkuDetails>? = null
@@ -143,12 +185,13 @@ class PurchaseFragment : Fragment(), BillingClientStateListener, View.OnClickLis
                 else -> null
             }
 
-            skuDetails?.let {skuDetails ->
+            skuDetails?.let { skuDetails ->
                 val flowParams = BillingFlowParams.newBuilder()
                     .setSkuDetails(skuDetails)
                     .build()
 
-                val responseCode = billingClient.launchBillingFlow(requireActivity(), flowParams).responseCode
+                val responseCode =
+                    billingClient.launchBillingFlow(requireActivity(), flowParams).responseCode
                 Log.d(TAG, responseCode.toString())
             }
         } else {
