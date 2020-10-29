@@ -1,6 +1,8 @@
 package com.bpapps.billingtest1
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
+import android.content.DialogInterface
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -15,7 +17,11 @@ private const val TAG = "TAG.PurchaseFragment"
 class PurchaseFragment : Fragment(), BillingClientStateListener, View.OnClickListener {
 
     private val purchaseUpdateListener = PurchasesUpdatedListener { billingResult, mutableList ->
+        Log.d(TAG, "${billingResult.responseCode}")
     }
+
+    private var products: MutableList<SkuDetails>? = null
+    private var subscriptions: MutableList<SkuDetails>? = null
 
     private lateinit var billingClient: BillingClient
 
@@ -75,19 +81,19 @@ class PurchaseFragment : Fragment(), BillingClientStateListener, View.OnClickLis
             if (billingClient.isReady) {
                 billingClient.querySkuDetailsAsync(params1.build()) { billingResult, skuDetailList ->
                     if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                        Log.d(TAG, "Total of ${skuDetailList?.size}")
-
-                        skuDetailList?.let { it ->
-                            it.forEach { skuDetails: SkuDetails ->
-                                Log.d(TAG, "Title=${skuDetails.title}, Price=${skuDetails.price}")
-                            }
-                        }
+                        products = skuDetailList
+//                        Log.d(TAG, "Total of ${skuDetailList?.size}")
+//                        skuDetailList?.let { it ->
+//                            it.forEach { skuDetails: SkuDetails ->
+//                                Log.d(TAG, "Title=${skuDetails.title}, Price=${skuDetails.price}")
+//                            }
+//                        }
 
                         tvProduct1.text =
                             "${skuDetailList?.get(0)?.title} - ${skuDetailList?.get(0)?.price}"
                         tvProduct2.text =
                             "${skuDetailList?.get(1)?.title} - ${skuDetailList?.get(1)?.price}"
-                        tvProduct2.text =
+                        tvProduct3.text =
                             "${skuDetailList?.get(2)?.title} - ${skuDetailList?.get(2)?.price}"
                     }
                 }
@@ -102,19 +108,21 @@ class PurchaseFragment : Fragment(), BillingClientStateListener, View.OnClickLis
             if (billingClient.isReady) {
                 billingClient.querySkuDetailsAsync(params2.build()) { billingResult, skuDetailList ->
                     if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                        Log.d(TAG, "Total of ${skuDetailList?.size}")
+                        subscriptions = skuDetailList
+//                        Log.d(TAG, "Total of ${skuDetailList?.size}")
+//                        skuDetailList?.let { it ->
+//                            it.forEach { skuDetails: SkuDetails ->
+//                                Log.d(
+//                                    TAG,
+//                                    "Title=${skuDetails.title}, Price=${skuDetails.price}"
+//                                )
+//                            }
+//                        }
 
-                        skuDetailList?.let { it ->
-                            it.forEach { skuDetails: SkuDetails ->
-                                Log.d(
-                                    TAG,
-                                    "Title=${skuDetails.title}, Price=${skuDetails.price}"
-                                )
-                            }
-                        }
-
-                        tvSubscription1.text = "${skuDetailList?.get(0)?.title} - ${skuDetailList?.get(0)?.price}"
-                        tvSubscription2.text = "${skuDetailList?.get(1)?.title} - ${skuDetailList?.get(1)?.price}"
+                        tvSubscription1.text =
+                            "${skuDetailList?.get(0)?.title} - ${skuDetailList?.get(0)?.price}"
+                        tvSubscription2.text =
+                            "${skuDetailList?.get(1)?.title} - ${skuDetailList?.get(1)?.price}"
                     }
                 }
             }
@@ -124,15 +132,38 @@ class PurchaseFragment : Fragment(), BillingClientStateListener, View.OnClickLis
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
     override fun onClick(v: View?) {
-        val msg = when (v?.id) {
-            R.id.tvProduct1 -> "tvProduct1"
-            R.id.tvProduct2 -> "tvProduct2"
-            R.id.tvProduct3 -> "tvProduct3"
-            R.id.tvSubscription1 -> "tvSubscription1"
-            R.id.tvSubscription2 -> "tvSubscription2"
-            else -> "NOUN"
-        }
 
-        Log.d(TAG, msg)
+        if (products != null && subscriptions != null) {
+            val skuDetails: SkuDetails? = when (v?.id) {
+                R.id.tvProduct1 -> products!![0]
+                R.id.tvProduct2 -> products!![1]
+                R.id.tvProduct3 -> products!![2]
+                R.id.tvSubscription1 -> subscriptions!![0]
+                R.id.tvSubscription2 -> subscriptions!![1]
+                else -> null
+            }
+
+            skuDetails?.let {skuDetails ->
+                val flowParams = BillingFlowParams.newBuilder()
+                    .setSkuDetails(skuDetails)
+                    .build()
+
+                val responseCode = billingClient.launchBillingFlow(requireActivity(), flowParams).responseCode
+                Log.d(TAG, responseCode.toString())
+            }
+        } else {
+            val dialog: AlertDialog = AlertDialog.Builder(requireContext()).let { builder ->
+                builder.setTitle("Error")
+                    .setMessage("Press 'LOAD PRODUCTS' first")
+                    .setPositiveButton("OK", object : DialogInterface.OnClickListener {
+                        override fun onClick(dialog: DialogInterface?, which: Int) {
+                            dialog?.dismiss()
+                        }
+                    })
+                    .create()
+            }
+
+            dialog.show()
+        }
     }
 }
